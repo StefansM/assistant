@@ -15,7 +15,7 @@ from assistant.conversation.model import Message
 
 def iterate_single_file(
     model: str, tokenizer: tiktoken.Encoding, max_tokens: int, file_path: pathlib.Path
-) -> None:
+) -> str:
     file_iterator = FileIterator(file_path)
 
     directives = [
@@ -40,21 +40,23 @@ def iterate_single_file(
             " ".join(directives) + "\n\n✂✂✂✂✂✂✂✂✂✂✂\n\n" + node_text,
         )
         node_tokens = tokenizer.encode(message.content)
+
         if len(node_tokens) < max_tokens:
             conversation = Conversation(model, [message])
             response = conversation.request()
             response_text = response.choices[0].message.content
             sanitized_text = sanitizer.sanitize(response_text)
-            print(sanitized_text)
 
             applier = DocstringApplier(sanitized_text)
             reformatted_text = applier.apply(sanitized_text)
-            print(reformatted_text)
+            return reformatted_text
         else:
             raise Exception(
                 "Node too large to process. If necessary, we could split it up but I"
                 "haven't had a need yet. Let me know if you need this feature."
             )
+
+    raise Exception("No docstring nodes found in file")
 
 
 @click.command()
@@ -67,8 +69,15 @@ def iterate_single_file(
         path_type=pathlib.Path,  # type: ignore
     ),
 )
+@click.option(
+    "-i",
+    "--inplace",
+    is_flag=True,
+    help="Overwrite the file in-place.",
+    default=False,
+)
 @click.pass_context
-def add_docstrings(ctx: click.Context, repo_root: pathlib.Path) -> None:
+def add_docstrings(ctx: click.Context, repo_root: pathlib.Path, inplace: bool) -> None:
     """Add docstrings to Python modules, classes and functions.
 
     REPO_ROOT: Either a single Python file or a directory containing Python files.
@@ -76,15 +85,23 @@ def add_docstrings(ctx: click.Context, repo_root: pathlib.Path) -> None:
     app_context: assistant.cli.AppContext = ctx.obj
 
     if repo_root.is_file():
-        iterate_single_file(
-            app_context.model, app_context.tokenizer, app_context.max_tokens, repo_root
+        reformatted_text = iterate_single_file(
+            app_context.model,
+            app_context.tokenizer,
+            app_context.max_tokens,
+            repo_root,
         )
+        if inplace:
+            repo_root.write_text(reformatted_text)
+
     else:
         file_iterator = RepositoryIterator(repo_root)
         for file_path in file_iterator.iterate():
-            iterate_single_file(
+            reformatted_text = iterate_single_file(
                 app_context.model,
                 app_context.tokenizer,
                 app_context.max_tokens,
                 file_path,
             )
+            if inplace:
+                file_path.write_text(reformatted_text)
