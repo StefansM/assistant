@@ -3,9 +3,11 @@ import dataclasses
 import typing
 
 
-InterestingNode: typing.TypeAlias = (
-    ast.AsyncFunctionDef | ast.FunctionDef | ast.ClassDef | ast.Module | ast.AST
+StmtNodes: typing.TypeAlias = (
+    ast.AsyncFunctionDef | ast.FunctionDef | ast.ClassDef | ast.Module
 )
+
+InterestingNode: typing.TypeAlias = StmtNodes | ast.AST
 
 
 @dataclasses.dataclass

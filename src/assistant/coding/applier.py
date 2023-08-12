@@ -1,16 +1,17 @@
 """Adds docstrings suggested by the OpenAI model back to the source code."""
 import ast
 import textwrap
+from typing import Any
 
-from assistant.coding.model import InterestingNode
+from assistant.coding.model import StmtNodes
 
 
 class DocstringTransformer(ast.NodeTransformer):
     def __init__(
         self,
-        async_function_defs: dict[str, str],
-        function_defs: dict[str, str],
-        classes: dict[str, str],
+        async_function_defs: dict[str, str | None],
+        function_defs: dict[str, str | None],
+        classes: dict[str, str | None],
         module_docstring: str | None,
     ):
         self.async_function_defs = async_function_defs
@@ -22,7 +23,7 @@ class DocstringTransformer(ast.NodeTransformer):
     def _create_docstring_node(docstring: str) -> ast.stmt:
         return ast.Expr(value=ast.Str(s=docstring))
 
-    def _add_docstring(self, node: InterestingNode, docstring: str | None):
+    def _add_docstring(self, node: StmtNodes, docstring: str | None) -> Any:
         if docstring:
             indented_docstring = textwrap.indent(
                 docstring, (node.col_offset + 4) * " "
@@ -33,47 +34,43 @@ class DocstringTransformer(ast.NodeTransformer):
 
         return node
 
-    def visit_AsyncFunctionDef(  # noqa: N802
-        self, node: ast.AsyncFunctionDef
-    ) -> ast.AsyncFunctionDef:
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> Any:
         super().generic_visit(node)
         return self._add_docstring(node, self.async_function_defs.get(node.name, None))
 
-    def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.FunctionDef:
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> Any:
         super().generic_visit(node)
         return self._add_docstring(node, self.function_defs.get(node.name, None))
 
-    def visit_ClassDef(self, node: ast.ClassDef) -> ast.ClassDef:
+    def visit_ClassDef(self, node: ast.ClassDef) -> Any:
         super().generic_visit(node)
         return self._add_docstring(node, self.classes.get(node.name, None))
 
-    def visit_Module(self, node: ast.Module) -> ast.Module:
+    def visit_Module(self, node: ast.Module) -> Any:
         super().generic_visit(node)
         return self._add_docstring(node, self.module_docstring)
 
 
 class ReplacementDocstringExtractor(ast.NodeVisitor):
     def __init__(self) -> None:
-        self.async_function_defs: dict[str, str] = {}
-        self.function_defs: dict[str, str] = {}
-        self.classes: dict[str, str] = {}
+        self.async_function_defs: dict[str, str | None] = {}
+        self.function_defs: dict[str, str | None] = {}
+        self.classes: dict[str, str | None] = {}
         self.module_docstring: str | None = None
 
-    def visit_AsyncFunctionDef(
-        self, node: ast.AsyncFunctionDef
-    ) -> ast.AsyncFunctionDef:
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> Any:
         self.async_function_defs[node.name] = ast.get_docstring(node)
         return super().generic_visit(node)
 
-    def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.FunctionDef:
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> Any:
         self.function_defs[node.name] = ast.get_docstring(node)
         return super().generic_visit(node)
 
-    def visit_ClassDef(self, node: ast.ClassDef) -> ast.ClassDef:
+    def visit_ClassDef(self, node: ast.ClassDef) -> Any:
         self.classes[node.name] = ast.get_docstring(node)
         return super().generic_visit(node)
 
-    def visit_Module(self, node: ast.Module) -> ast.Module:
+    def visit_Module(self, node: ast.Module) -> Any:
         self.module_docstring = ast.get_docstring(node)
         return super().generic_visit(node)
 

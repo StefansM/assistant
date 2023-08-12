@@ -27,7 +27,7 @@ class FileIterator:
             yield OtherNode(node, ast.get_source_segment(self.text, node))
             return
 
-        child_nodes: list[DocstringNode] = []
+        child_nodes = []
         for child in ast.iter_child_nodes(node):
             for transformed_child in self._extract_ast(child):
                 if transformed_child:
