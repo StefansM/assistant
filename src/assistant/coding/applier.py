@@ -1,9 +1,15 @@
 """Adds docstrings suggested by the OpenAI model back to the source code."""
 import ast
+import enum
 import textwrap
 from typing import Any
 
 from assistant.coding.model import StmtNodes
+
+
+class ApplierMode(enum.Enum):
+    REPLACE = enum.auto()
+    KEEP = enum.auto()
 
 
 class DocstringTransformer(ast.NodeTransformer):
@@ -13,23 +19,35 @@ class DocstringTransformer(ast.NodeTransformer):
         function_defs: dict[str, str | None],
         classes: dict[str, str | None],
         module_docstring: str | None,
+        mode: ApplierMode,
     ):
         self.async_function_defs = async_function_defs
         self.function_defs = function_defs
         self.classes = classes
         self.module_docstring = module_docstring
+        self.mode = mode
 
     @staticmethod
     def _create_docstring_node(docstring: str) -> ast.stmt:
         return ast.Expr(value=ast.Str(s=docstring))
 
     def _add_docstring(self, node: StmtNodes, docstring: str | None) -> Any:
-        if docstring:
-            indented_docstring = textwrap.indent(
-                docstring, (node.col_offset + 4) * " "
-            ).strip()
+        has_docstring = ast.get_docstring(node) is not None
 
-            docstring_node = self._create_docstring_node(indented_docstring)
+        if not docstring:
+            return node
+        elif has_docstring and self.mode == ApplierMode.KEEP:
+            return node
+
+        indented_docstring = textwrap.indent(
+            docstring, (node.col_offset + 4) * " "
+        ).strip()
+
+        docstring_node = self._create_docstring_node(indented_docstring)
+
+        if has_docstring:
+            node.body[0] = docstring_node
+        else:
             node.body.insert(0, docstring_node)
 
         return node
@@ -76,8 +94,9 @@ class ReplacementDocstringExtractor(ast.NodeVisitor):
 
 
 class DocstringApplier:
-    def __init__(self, text: str):
+    def __init__(self, text: str, mode: ApplierMode):
         self.text = text
+        self.mode = mode
 
     def apply(self, replacement: str) -> str:
         original_ast = ast.parse(self.text)
@@ -91,6 +110,7 @@ class DocstringApplier:
             docstring_extractor.function_defs,
             docstring_extractor.classes,
             docstring_extractor.module_docstring,
+            self.mode,
         )
         patched_ast = ast.fix_missing_locations(
             docstring_transformer.visit(original_ast)

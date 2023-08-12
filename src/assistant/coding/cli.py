@@ -5,6 +5,7 @@ import tiktoken
 
 import assistant.cli
 import assistant.coding.model
+from assistant.coding.applier import ApplierMode
 from assistant.coding.applier import DocstringApplier
 from assistant.coding.iterator import FileIterator
 from assistant.coding.iterator import RepositoryIterator
@@ -47,7 +48,7 @@ def iterate_single_file(
             response_text = response.choices[0].message.content
             sanitized_text = sanitizer.sanitize(response_text)
 
-            applier = DocstringApplier(sanitized_text)
+            applier = DocstringApplier(node_text, ApplierMode.KEEP)
             reformatted_text = applier.apply(sanitized_text)
             return reformatted_text
         else:
@@ -93,15 +94,25 @@ def add_docstrings(ctx: click.Context, repo_root: pathlib.Path, inplace: bool) -
         )
         if inplace:
             repo_root.write_text(reformatted_text)
+        else:
+            print(f"FILE: {repo_root}")
+            print(reformatted_text)
 
     else:
         file_iterator = RepositoryIterator(repo_root)
         for file_path in file_iterator.iterate():
-            reformatted_text = iterate_single_file(
-                app_context.model,
-                app_context.tokenizer,
-                app_context.max_tokens,
-                file_path,
-            )
-            if inplace:
-                file_path.write_text(reformatted_text)
+            try:
+                reformatted_text = iterate_single_file(
+                    app_context.model,
+                    app_context.tokenizer,
+                    app_context.max_tokens,
+                    file_path,
+                )
+                if inplace:
+                    file_path.write_text(reformatted_text)
+                else:
+                    print(f"FILE: {file_path}")
+                    print(reformatted_text)
+            except Exception as e:
+                print(f"ERROR: {file_path}")
+                print(e)
