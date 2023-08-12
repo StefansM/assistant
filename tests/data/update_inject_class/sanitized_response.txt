@@ -1,0 +1,107 @@
+class FileIterator:
+    '''Iterator that processes a file and extracts docstrings and other interesting nodes.
+
+    Args:
+        file_path (pathlib.Path): The path to the file to be processed.
+
+    Attributes:
+        file_path (pathlib.Path): The path to the file to be processed.
+        text (str): The contents of the file.
+    '''
+
+    def __init__(self, file_path: pathlib.Path):
+        ...
+
+    def _extract_ast(self, node: InterestingNode) -> typing.Iterable[DocstringNode | OtherNode]:
+        '''Recursively extracts interesting nodes and their docstrings from the AST.
+
+        Args:
+            node (InterestingNode): The current AST node to be processed.
+
+        Yields:
+            typing.Iterable[DocstringNode | OtherNode]: The extracted docstring nodes and other nodes.
+        '''
+        ...
+
+    def iterate(self) -> collections.abc.Iterable[DocstringNode | OtherNode]:
+        '''Iterates over the file and yields the extracted docstring nodes and other nodes.
+
+        Yields:
+            collections.abc.Iterable[DocstringNode | OtherNode]: The extracted docstring nodes and other nodes.
+        '''
+        ...
+
+
+class RepositoryIterator:
+    '''Iterator that processes a directory and iterates over Python files.
+
+    Args:
+        root (pathlib.Path): The root directory to be processed.
+
+    Attributes:
+        root (pathlib.Path): The root directory to be processed.
+    '''
+
+    def __init__(self, root: pathlib.Path):
+        ...
+
+    def iterate(self) -> collections.abc.Iterable[pathlib.Path]:
+        '''Iterates over the files within the directory and yields their paths.
+
+        Yields:
+            collections.abc.Iterable[pathlib.Path]: The paths of the files within the directory.
+        '''
+        ...
+class FileIterator:
+    """Iterator that processes a file and extracts docstrings and other interesting nodes.
+
+    Args:
+        file_path (pathlib.Path): The path to the file to be processed.
+
+    Attributes:
+        file_path (pathlib.Path): The path to the file to be processed.
+        text (str): The contents of the file.
+    """
+
+    def __init__(self, file_path: pathlib.Path):
+        ...
+
+    def _extract_ast(self, node: InterestingNode) -> typing.Iterable[DocstringNode | OtherNode]:
+        """Recursively extracts interesting nodes and their docstrings from the AST.
+
+        Args:
+            node (InterestingNode): The current AST node to be processed.
+
+        Yields:
+            typing.Iterable[DocstringNode | OtherNode]: The extracted docstring nodes and other nodes.
+        """
+        ...
+
+    def iterate(self) -> collections.abc.Iterable[DocstringNode | OtherNode]:
+        """Iterates over the file and yields the extracted docstring nodes and other nodes.
+
+        Yields:
+            collections.abc.Iterable[DocstringNode | OtherNode]: The extracted docstring nodes and other nodes.
+        """
+        ...
+
+class RepositoryIterator:
+    """Iterator that processes a directory and iterates over Python files.
+
+    Args:
+        root (pathlib.Path): The root directory to be processed.
+
+    Attributes:
+        root (pathlib.Path): The root directory to be processed.
+    """
+
+    def __init__(self, root: pathlib.Path):
+        ...
+
+    def iterate(self) -> collections.abc.Iterable[pathlib.Path]:
+        """Iterates over the files within the directory and yields their paths.
+
+        Yields:
+            collections.abc.Iterable[pathlib.Path]: The paths of the files within the directory.
+        """
+        ...

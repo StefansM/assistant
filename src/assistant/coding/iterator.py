@@ -1,0 +1,61 @@
+import ast
+import collections.abc
+import pathlib
+import typing
+
+from assistant.coding.model import DocstringNode
+from assistant.coding.model import InterestingNode
+from assistant.coding.model import OtherNode
+
+
+class FileIterator:
+    def __init__(self, file_path: pathlib.Path):
+        assert file_path.is_file()
+        self.file_path = file_path
+        self.text = self.file_path.read_text()
+
+    def _extract_ast(
+        self, node: InterestingNode
+    ) -> typing.Iterable[DocstringNode | OtherNode]:
+        interesting_nodes = (
+            ast.AsyncFunctionDef,
+            ast.FunctionDef,
+            ast.ClassDef,
+            ast.Module,
+        )
+        if not isinstance(node, interesting_nodes):
+            yield OtherNode(node, ast.get_source_segment(self.text, node))
+            return
+
+        child_nodes: list[DocstringNode] = []
+        for child in ast.iter_child_nodes(node):
+            for transformed_child in self._extract_ast(child):
+                if transformed_child:
+                    child_nodes.append(transformed_child)
+
+        src = ast.get_source_segment(self.text, node)
+
+        if isinstance(node, ast.Module) and not src:
+            src = self.text
+
+        yield DocstringNode(
+            ast=node,
+            original_docstring=ast.get_docstring(node),
+            code_snippet=src,
+            children=child_nodes,
+        )
+
+    def iterate(self) -> collections.abc.Iterable[DocstringNode | OtherNode]:
+        syntax_tree = ast.parse(self.text, filename=self.file_path.name)
+        yield from self._extract_ast(syntax_tree)
+
+
+class RepositoryIterator:
+    def __init__(self, root: pathlib.Path):
+        assert root.is_dir()
+        self.root = root
+
+    def iterate(self) -> collections.abc.Iterable[pathlib.Path]:
+        for path in self.root.glob("**/*.py"):
+            if path.is_file():
+                yield path

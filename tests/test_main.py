@@ -2,7 +2,7 @@
 import pytest
 from click.testing import CliRunner
 
-from assistant import __main__
+import assistant.cli
 
 
 @pytest.fixture
@@ -13,5 +13,5 @@ def runner() -> CliRunner:
 
 def test_main_succeeds(runner: CliRunner) -> None:
     """It exits with a status code of zero."""
-    result = runner.invoke(__main__.main)
+    result = runner.invoke(assistant.cli.main)
     assert result.exit_code == 0
