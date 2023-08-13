@@ -1,6 +1,6 @@
 [flake8]
 max-line-length = 80
-select = B,B950,C,DAR,E,F,N,RST,W
+select = B,C,DAR,E,F,N,W
 extend-ignore = E203, E501
 max-complexity = 10
 docstring-convention = google
