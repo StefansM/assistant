@@ -4,6 +4,8 @@ import enum
 import textwrap
 from typing import Any
 
+import libcst as cst
+
 from assistant.coding.model import StmtNodes
 
 
@@ -12,7 +14,7 @@ class ApplierMode(enum.Enum):
     KEEP = enum.auto()
 
 
-class DocstringTransformer(ast.NodeTransformer):
+class DocstringTransformer(cst.CSTTransformer):
     def __init__(
         self,
         async_function_defs: dict[str, str | None],
@@ -21,6 +23,7 @@ class DocstringTransformer(ast.NodeTransformer):
         module_docstring: str | None,
         mode: ApplierMode,
     ):
+        super().__init__()
         self.async_function_defs = async_function_defs
         self.function_defs = function_defs
         self.classes = classes
@@ -28,45 +31,55 @@ class DocstringTransformer(ast.NodeTransformer):
         self.mode = mode
 
     @staticmethod
-    def _create_docstring_node(docstring: str) -> ast.stmt:
-        return ast.Expr(value=ast.Str(s=docstring))
+    def _create_docstring_node(docstring: str) -> cst.SimpleStatementLine:
+        return cst.SimpleStatementLine(
+            body=[
+                cst.Expr(
+                    value=cst.SimpleString(value=f'"""{textwrap.dedent(docstring)}"""')
+                )
+            ]
+        )
 
-    def _add_docstring(self, node: StmtNodes, docstring: str | None) -> Any:
-        has_docstring = ast.get_docstring(node) is not None
+    def _add_docstring(self, node: StmtNodes, docstring: str | None) -> StmtNodes:
+        has_docstring = node.get_docstring() is not None
 
         if not docstring:
             return node
         elif has_docstring and self.mode == ApplierMode.KEEP:
             return node
 
-        indented_docstring = textwrap.indent(
-            docstring, (node.col_offset + 4) * " "
-        ).strip()
+        docstring_node = self._create_docstring_node(docstring)
+        if isinstance(node, cst.Module):
+            body = node.body
+            if has_docstring:
+                return node.with_changes(body=(docstring_node, *body[1:]))
+            else:
+                node = node.with_changes(body=(docstring_node, cst.EmptyLine(), *body))
+                return node
 
-        docstring_node = self._create_docstring_node(indented_docstring)
+        body = node.body.body[1:] if has_docstring else node.body.body
+        return node.with_changes(
+            body=node.body.with_changes(body=(docstring_node, *body))
+        )
 
-        if has_docstring:
-            node.body[0] = docstring_node
-        else:
-            node.body.insert(0, docstring_node)
+    def leave_FunctionDef(
+        self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
+    ) -> cst.FunctionDef:
+        return self._add_docstring(
+            updated_node, self.function_defs.get(updated_node.name.value, None)
+        )
 
-        return node
+    def leave_ClassDef(
+        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+    ) -> cst.ClassDef:
+        return self._add_docstring(
+            updated_node, self.classes.get(updated_node.name.value, None)
+        )
 
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> Any:
-        super().generic_visit(node)
-        return self._add_docstring(node, self.async_function_defs.get(node.name, None))
-
-    def visit_FunctionDef(self, node: ast.FunctionDef) -> Any:
-        super().generic_visit(node)
-        return self._add_docstring(node, self.function_defs.get(node.name, None))
-
-    def visit_ClassDef(self, node: ast.ClassDef) -> Any:
-        super().generic_visit(node)
-        return self._add_docstring(node, self.classes.get(node.name, None))
-
-    def visit_Module(self, node: ast.Module) -> Any:
-        super().generic_visit(node)
-        return self._add_docstring(node, self.module_docstring)
+    def leave_Module(
+        self, original_node: cst.Module, updated_node: cst.Module
+    ) -> cst.Module:
+        return self._add_docstring(updated_node, self.module_docstring)
 
 
 class ReplacementDocstringExtractor(ast.NodeVisitor):
@@ -99,7 +112,7 @@ class DocstringApplier:
         self.mode = mode
 
     def apply(self, replacement: str) -> str:
-        original_ast = ast.parse(self.text)
+        original_cst = cst.parse_module(self.text)
         replacement_ast = ast.parse(replacement)
 
         docstring_extractor = ReplacementDocstringExtractor()
@@ -112,7 +125,5 @@ class DocstringApplier:
             docstring_extractor.module_docstring,
             self.mode,
         )
-        patched_ast = ast.fix_missing_locations(
-            docstring_transformer.visit(original_ast)
-        )
-        return ast.unparse(patched_ast)
+        modified = original_cst.visit(docstring_transformer)
+        return modified.code

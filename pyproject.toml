@@ -21,6 +21,7 @@ click = ">=8.0.1"
 openai = "^0.27.8"
 python-dotenv = "^1.0.0"
 tiktoken = "^0.4.0"
+libcst = "^1.0.1"
 
 [tool.poetry.dev-dependencies]
 Pygments = ">=2.10.0"

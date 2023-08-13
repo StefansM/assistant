@@ -2,10 +2,10 @@ import ast
 import dataclasses
 import typing
 
+import libcst as cst
 
-StmtNodes: typing.TypeAlias = (
-    ast.AsyncFunctionDef | ast.FunctionDef | ast.ClassDef | ast.Module
-)
+
+StmtNodes: typing.TypeAlias = cst.FunctionDef | cst.ClassDef | cst.Module
 
 InterestingNode: typing.TypeAlias = StmtNodes | ast.AST
 
