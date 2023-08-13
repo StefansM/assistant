@@ -2,6 +2,7 @@ class ResponseSanitizer:
     """Sanitize the response from the OpenAI."""
 
     def __init__(self) -> None:
+        """Initializes the ResponseSanitizer class."""
         self._extractors = [
             self._extract_code,
             self._extract_delimited,
@@ -9,6 +10,13 @@ class ResponseSanitizer:
 
     @staticmethod
     def _extract_code(content: str) -> str:
+        """Extracts code from the content.
+
+        Args:
+            content (str): The text content from which to extract the code.
+
+        Returns:
+            str: Extracted code if present, else returns the content as is."""
         lines = content.split("\n")
         extracting = False
         code_lines: list[str] = []
@@ -28,6 +36,13 @@ class ResponseSanitizer:
 
     @staticmethod
     def _extract_delimited(content: str) -> str:
+        """Extracts text between delimiters from the content.
+
+        Args:
+            content (str): The text content from which to extract the delimited text.
+
+        Returns:
+            str: Extracted delimited text if present, else returns the content as is."""
         lines = content.split("\n")
         extracting = False
         delimiter = "✂"
@@ -47,6 +62,13 @@ class ResponseSanitizer:
         return content
 
     def sanitize(self, content: str) -> str:
+        """Runs content through all the extractors defined in the class.
+
+        Args:
+            content (str): The text content to sanitize.
+
+        Returns:
+            str: The sanitized content."""
         for extractor in self._extractors:
             content = extractor(content)
 

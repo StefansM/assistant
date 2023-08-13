@@ -26,6 +26,11 @@ class DocstringTransformer(cst.CSTTransformer):
         module_docstring: str | None,
         mode: ApplierMode,
     ):
+        """Initialize DocstringApplier class.
+
+        Args:
+            text (str): The text to which to apply the docstrings.
+            mode (ApplierMode): The mode of applying the docstrings."""
         super().__init__()
         self.async_function_defs = async_function_defs
         self.function_defs = function_defs
@@ -96,6 +101,11 @@ class DocstringTransformer(cst.CSTTransformer):
 
 class ReplacementDocstringExtractor(ast.NodeVisitor):
     def __init__(self) -> None:
+        """Initialize DocstringApplier class.
+
+        Args:
+            text (str): The text to which to apply the docstrings.
+            mode (ApplierMode): The mode of applying the docstrings."""
         self.async_function_defs: dict[str, str | None] = {}
         self.function_defs: dict[str, str | None] = {}
         self.classes: dict[str, str | None] = {}
@@ -120,10 +130,22 @@ class ReplacementDocstringExtractor(ast.NodeVisitor):
 
 class DocstringApplier:
     def __init__(self, text: str, mode: ApplierMode):
+        """Initialize DocstringApplier class.
+
+        Args:
+            text (str): The text to which to apply the docstrings.
+            mode (ApplierMode): The mode of applying the docstrings."""
         self.text = text
         self.mode = mode
 
     def apply(self, replacement: str) -> str:
+        """Applies the replacement docstring to the text based on the mode.
+
+        Args:
+            replacement (str): The replacement docstring.
+
+        Returns:
+            str: The modified code with revised docstrings."""
         original_cst = cst.parse_module(self.text)
         replacement_ast = ast.parse(replacement)
 

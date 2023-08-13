@@ -9,6 +9,13 @@ from assistant.conversation.model import Message
 
 @dataclasses.dataclass
 class ConversationContext:
+    """The context for holding conversation related data.
+
+    Attributes:
+        app (AppContext): The app related data and configurations.
+        conversation (Conversation): The actual conversation instance that
+            operates the interaction."""
+
     app: AppContext
     conversation: Conversation
 

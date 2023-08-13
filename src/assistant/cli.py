@@ -11,6 +11,14 @@ import assistant.model
 
 @dataclasses.dataclass
 class AppContext:
+    """Data class holding the context for the application
+
+    Attributes:
+        model (str): Transformer model to be used
+        max_tokens (int): Maximum number of tokens that can be generated
+        temperature (float): Model's randomness. Higher value means more randomness
+        tokenizer (tiktoken.Encoding): Encoder for the model"""
+
     model: str
     max_tokens: int
     temperature: float

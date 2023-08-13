@@ -17,6 +17,20 @@ from assistant.conversation.model import Message
 def iterate_single_file(
     model: str, tokenizer: tiktoken.Encoding, max_tokens: int, file_path: pathlib.Path
 ) -> str:
+    """Iterates over one single file and applies docstrings to the code nodes.
+
+    Args:
+        model (str): The trained model used for generating docstrings.
+        tokenizer (tiktoken.Encoding): The tokenizer used to encode code into tokens.
+        max_tokens (int): The maximum number of tokens a code can have to be processed.
+        file_path (pathlib.Path): The path of the single file to be processed.
+
+    Returns:
+        str: The reformatted code with added docstrings.
+
+    Raises:
+        Exception: If no docstring nodes are found in the file or if the file is too large
+                   to process."""
     file_iterator = FileIterator(file_path)
 
     directives = [
@@ -30,7 +44,7 @@ def iterate_single_file(
     for node in file_iterator.iterate():
         node_text = node.code_snippet or node.combine_child_code()
 
-        if not node_text:
+        if not node_text.strip():
             continue
 
         message = Message(
