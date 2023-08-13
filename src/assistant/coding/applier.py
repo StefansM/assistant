@@ -2,11 +2,14 @@
 import ast
 import enum
 import textwrap
+from collections.abc import Sequence
 from typing import Any
+from typing import TypeVar
 
 import libcst as cst
 
-from assistant.coding.model import StmtNodes
+
+T = TypeVar("T", cst.FunctionDef, cst.ClassDef, cst.Module)
 
 
 class ApplierMode(enum.Enum):
@@ -40,7 +43,7 @@ class DocstringTransformer(cst.CSTTransformer):
             ]
         )
 
-    def _add_docstring(self, node: StmtNodes, docstring: str | None) -> StmtNodes:
+    def _add_docstring(self, node: T, docstring: str | None) -> T:
         has_docstring = node.get_docstring() is not None
 
         if not docstring:
@@ -50,17 +53,26 @@ class DocstringTransformer(cst.CSTTransformer):
 
         docstring_node = self._create_docstring_node(docstring)
         if isinstance(node, cst.Module):
-            body = node.body
-            if has_docstring:
-                return node.with_changes(body=(docstring_node, *body[1:]))
-            else:
-                node = node.with_changes(body=(docstring_node, cst.EmptyLine(), *body))
-                return node
+            return self._add_docstring_to_module(docstring_node, has_docstring, node)
 
-        body = node.body.body[1:] if has_docstring else node.body.body
+        body: Sequence[cst.BaseStatement] | Sequence[cst.BaseSmallStatement] = (
+            node.body.body[1:] if has_docstring else node.body.body
+        )
         return node.with_changes(
             body=node.body.with_changes(body=(docstring_node, *body))
         )
+
+    @staticmethod
+    def _add_docstring_to_module(
+        docstring_node: cst.SimpleStatementLine,
+        has_docstring: bool,
+        node: cst.Module,
+    ) -> cst.Module:
+        body = node.body
+        if has_docstring:
+            return node.with_changes(body=(docstring_node, *body[1:]))
+        else:
+            return node.with_changes(body=(docstring_node, cst.EmptyLine(), *body))
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef

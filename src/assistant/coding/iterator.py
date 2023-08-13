@@ -5,7 +5,6 @@ import typing
 
 from assistant.coding.model import DocstringNode
 from assistant.coding.model import InterestingNode
-from assistant.coding.model import OtherNode
 
 
 class FileIterator:
@@ -14,9 +13,7 @@ class FileIterator:
         self.file_path = file_path
         self.text = self.file_path.read_text()
 
-    def _extract_ast(
-        self, node: InterestingNode
-    ) -> typing.Iterable[DocstringNode | OtherNode]:
+    def _extract_ast(self, node: InterestingNode) -> typing.Iterable[DocstringNode]:
         interesting_nodes = (
             ast.AsyncFunctionDef,
             ast.FunctionDef,
@@ -24,7 +21,6 @@ class FileIterator:
             ast.Module,
         )
         if not isinstance(node, interesting_nodes):
-            yield OtherNode(node, ast.get_source_segment(self.text, node))
             return
 
         child_nodes = []
@@ -45,7 +41,7 @@ class FileIterator:
             children=child_nodes,
         )
 
-    def iterate(self) -> collections.abc.Iterable[DocstringNode | OtherNode]:
+    def iterate(self) -> collections.abc.Iterable[DocstringNode]:
         syntax_tree = ast.parse(self.text, filename=self.file_path.name)
         yield from self._extract_ast(syntax_tree)
 

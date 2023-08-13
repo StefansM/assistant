@@ -16,9 +16,7 @@ class DocstringNode:
     code_snippet: str | None
     ast: ast.AST
 
-    children: list[typing.Union["DocstringNode", "OtherNode"]] = dataclasses.field(
-        default_factory=list
-    )
+    children: list["DocstringNode"] = dataclasses.field(default_factory=list)
 
     def combine_child_code(self) -> str:
         return "\n\n".join(

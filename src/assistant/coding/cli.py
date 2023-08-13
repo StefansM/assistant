@@ -28,9 +28,6 @@ def iterate_single_file(
     sanitizer = ResponseSanitizer()
 
     for node in file_iterator.iterate():
-        if not isinstance(node, assistant.coding.model.DocstringNode):
-            continue
-
         node_text = node.code_snippet or node.combine_child_code()
 
         if not node_text:
