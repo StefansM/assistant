@@ -22,11 +22,11 @@ class FileIterator:
             Content of the python script"""
 
     def __init__(self, file_path: pathlib.Path):
-        """Instantiates the RepositoryIterator object with the given root directory.
+        """Instantiates the FileIterator object for a single file.
 
         Args:
-            root (pathlib.Path):
-                The root directory that needs to be parsed"""
+            file_path (pathlib.Path):
+                The file to be parsed."""
         assert file_path.is_file()
         self.file_path = file_path
         self.text = self.file_path.read_text()
@@ -69,11 +69,12 @@ class FileIterator:
         )
 
     def iterate(self) -> collections.abc.Iterable[DocstringNode]:
-        """Iterates over the directory to generate paths to Python script files.
+        """Iterates over the file to generate AST nodes.
 
         Returns:
-            An iterable containing pathlib.Path objects, which are paths to
-            Python script files in the directory"""
+            An iterable containing DocstringNode objects, which includes
+            information about the node (AST), associated docstring,
+            associated code snippet, and its child nodes"""
         syntax_tree = ast.parse(self.text, filename=self.file_path.name)
         yield from self._extract_ast(syntax_tree)
 
