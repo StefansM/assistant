@@ -20,9 +20,9 @@ class ApplierMode(enum.Enum):
 class DocstringTransformer(cst.CSTTransformer):
     def __init__(
         self,
-        async_function_defs: dict[str, str | None],
-        function_defs: dict[str, str | None],
-        classes: dict[str, str | None],
+        async_function_defs: dict[tuple[str, ...], str | None],
+        function_defs: dict[tuple[str, ...], str | None],
+        classes: dict[tuple[str, ...], str | None],
         module_docstring: str | None,
         mode: ApplierMode,
     ):
@@ -37,6 +37,7 @@ class DocstringTransformer(cst.CSTTransformer):
         self.classes = classes
         self.module_docstring = module_docstring
         self.mode = mode
+        self.stack: list[str] = []
 
     @staticmethod
     def _create_docstring_node(docstring: str) -> cst.SimpleStatementLine:
@@ -79,19 +80,27 @@ class DocstringTransformer(cst.CSTTransformer):
         else:
             return node.with_changes(body=(docstring_node, cst.EmptyLine(), *body))
 
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool | None:
+        self.stack.append(node.name.value)
+        return True
+
+    def visit_ClassDef(self, node: cst.ClassDef) -> bool | None:
+        self.stack.append(node.name.value)
+        return True
+
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
     ) -> cst.FunctionDef:
-        return self._add_docstring(
-            updated_node, self.function_defs.get(updated_node.name.value, None)
-        )
+        key = tuple(self.stack)
+        self.stack.pop()
+        return self._add_docstring(updated_node, self.function_defs.get(key, None))
 
     def leave_ClassDef(
         self, original_node: cst.ClassDef, updated_node: cst.ClassDef
     ) -> cst.ClassDef:
-        return self._add_docstring(
-            updated_node, self.classes.get(updated_node.name.value, None)
-        )
+        key = tuple(self.stack)
+        self.stack.pop()
+        return self._add_docstring(updated_node, self.classes.get(key, None))
 
     def leave_Module(
         self, original_node: cst.Module, updated_node: cst.Module
@@ -101,27 +110,43 @@ class DocstringTransformer(cst.CSTTransformer):
 
 class ReplacementDocstringExtractor(ast.NodeVisitor):
     def __init__(self) -> None:
-        """Initialize DocstringApplier class.
+        """AST visitor to extract docstrings.
 
-        Args:
-            text (str): The text to which to apply the docstrings.
-            mode (ApplierMode): The mode of applying the docstrings."""
-        self.async_function_defs: dict[str, str | None] = {}
-        self.function_defs: dict[str, str | None] = {}
-        self.classes: dict[str, str | None] = {}
+        Stores docstrings keyed by the path to the node in the AST.
+        """
+        self.async_function_defs: dict[tuple[str, ...], str | None] = {}
+        self.function_defs: dict[tuple[str, ...], str | None] = {}
+        self.classes: dict[tuple[str, ...], str | None] = {}
         self.module_docstring: str | None = None
+        self.stack: list[str] = []
+
+    def _key(self, name: str) -> tuple[str]:
+        self.stack.append(name)
+        return tuple(self.stack)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> Any:
-        self.async_function_defs[node.name] = ast.get_docstring(node)
-        return super().generic_visit(node)
+        key = self._key(node.name)
+        self.async_function_defs[key] = ast.get_docstring(node)
+
+        result = super().generic_visit(node)
+        self.stack.pop()
+        return result
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> Any:
-        self.function_defs[node.name] = ast.get_docstring(node)
-        return super().generic_visit(node)
+        key = self._key(node.name)
+        self.function_defs[key] = ast.get_docstring(node)
+
+        result = super().generic_visit(node)
+        self.stack.pop()
+        return result
 
     def visit_ClassDef(self, node: ast.ClassDef) -> Any:
-        self.classes[node.name] = ast.get_docstring(node)
-        return super().generic_visit(node)
+        key = self._key(node.name)
+        self.classes[key] = ast.get_docstring(node)
+
+        result = super().generic_visit(node)
+        self.stack.pop()
+        return result
 
     def visit_Module(self, node: ast.Module) -> Any:
         self.module_docstring = ast.get_docstring(node)
